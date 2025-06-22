@@ -14,8 +14,8 @@ class PDFGitHubExtractor:
             claude_api_key: Your Anthropic API key
             github_token: Your GitHub personal access token (optional, but recommended)
         """
-        self.claude_api_key = "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"
-        self.github_token = "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"
+        self.claude_api_key = claude_api_key
+        self.github_token = github_token
         self.claude_headers = {
             "Content-Type": "application/json",
             "x-api-key": self.claude_api_key,
@@ -331,8 +331,8 @@ def main():
     Example usage of the PDF GitHub extractor with README fetching
     """
     # PUT YOUR API KEYS HERE
-    CLAUDE_API_KEY = "your-anthropic-api-key-here"
-    GITHUB_TOKEN = "your-github-token-here"  # Optional but recommended for higher rate limits
+    CLAUDE_API_KEY = "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"
+    GITHUB_TOKEN = "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"  # Optional but recommended for higher rate limits
     
     # Initialize extractor
     extractor = PDFGitHubExtractor(CLAUDE_API_KEY, GITHUB_TOKEN)
