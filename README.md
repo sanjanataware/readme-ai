@@ -1,4 +1,4 @@
-# New Project
+# README.ai (read me pls)
 
 *Automatically synced with your [v0.dev](https://v0.dev) deployments*
 
