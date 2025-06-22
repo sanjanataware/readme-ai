@@ -18,6 +18,9 @@ export default function VideoPlayer({ job, onClose }: VideoPlayerProps) {
   const [isMuted, setIsMuted] = useState(false)
   const [videoError, setVideoError] = useState(false)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -126,6 +129,48 @@ export default function VideoPlayer({ job, onClose }: VideoPlayerProps) {
 
   const handlePlay = () => setIsPlaying(true)
   const handlePause = () => setIsPlaying(false)
+  
+  const handleTimeUpdate = () => {
+    if (!videoRef.current || isDragging) return
+    setCurrentTime(videoRef.current.currentTime)
+  }
+  
+  const handleLoadedMetadata = () => {
+    if (!videoRef.current) return
+    setDuration(videoRef.current.duration)
+  }
+  
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!videoRef.current || !duration) return
+    
+    const rect = e.currentTarget.getBoundingClientRect()
+    const clickX = e.clientX - rect.left
+    const width = rect.width
+    const newTime = (clickX / width) * duration
+    
+    videoRef.current.currentTime = newTime
+    setCurrentTime(newTime)
+  }
+  
+  const handleProgressMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true)
+    handleProgressClick(e)
+  }
+  
+  const handleProgressMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    handleProgressClick(e)
+  }
+  
+  const handleProgressMouseUp = () => {
+    setIsDragging(false)
+  }
+  
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60)
+    const seconds = Math.floor(time % 60)
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
 
   if (!job) return null
 
@@ -194,6 +239,8 @@ export default function VideoPlayer({ job, onClose }: VideoPlayerProps) {
                   className="w-full h-full"
                   controls={false}
                   onLoadedData={handleVideoLoad}
+                  onLoadedMetadata={handleLoadedMetadata}
+                  onTimeUpdate={handleTimeUpdate}
                   onError={handleVideoError}
                   onPlay={handlePlay}
                   onPause={handlePause}
@@ -202,6 +249,27 @@ export default function VideoPlayer({ job, onClose }: VideoPlayerProps) {
                 
                 {/* Custom Controls Overlay */}
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                  {/* Progress Bar */}
+                  <div className="mb-3">
+                    <div 
+                      className="relative h-1 bg-white/30 rounded-full cursor-pointer group"
+                      onClick={handleProgressClick}
+                      onMouseDown={handleProgressMouseDown}
+                      onMouseMove={handleProgressMouseMove}
+                      onMouseUp={handleProgressMouseUp}
+                      onMouseLeave={handleProgressMouseUp}
+                    >
+                      <div 
+                        className="absolute top-0 left-0 h-full bg-white rounded-full transition-all"
+                        style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : '0%' }}
+                      />
+                      <div 
+                        className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ left: duration > 0 ? `${(currentTime / duration) * 100}%` : '0%', transform: 'translateX(-50%) translateY(-50%)' }}
+                      />
+                    </div>
+                  </div>
+                  
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Button
@@ -221,6 +289,10 @@ export default function VideoPlayer({ job, onClose }: VideoPlayerProps) {
                       >
                         {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                       </Button>
+                      
+                      <div className="text-white text-sm ml-2">
+                        {formatTime(currentTime)} / {formatTime(duration)}
+                      </div>
                     </div>
                     
                     <div className="text-white text-sm">

@@ -16,3 +16,17 @@ export interface VideoJobStatus {
   quality: string
   original_filename?: string
 }
+
+export interface GitHubRepo {
+  url: string
+  original?: string
+  simplified?: string
+}
+
+export interface GitHubExtractionResult {
+  github_links: string[]
+  readmes_count: number
+  readmes: Record<string, string>
+  simplified_readmes: Record<string, { original: string; simplified: string }>
+  file_path?: string
+}

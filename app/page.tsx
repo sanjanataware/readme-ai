@@ -6,12 +6,14 @@ import { useState } from "react"
 import { Upload, FileText, Brain, Sparkles, AlertCircle, CheckCircle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { config, type VideoJobStatus } from "@/lib/config"
+import { config, type VideoJobStatus, type GitHubRepo } from "@/lib/config"
+import { extractGitHubRepos } from "@/lib/github-api"
 import QuizPanel from "./components/quiz-panel"
 import ConceptsDisplay from "./components/concepts-display"
 import VideoPanel from "./components/video-panel"
 import VideoLibrary from "./components/video-library"
 import VideoPlayer from "./components/video-player"
+import { GitHubReposPanel } from "./components/github-repos-panel"
 
 interface QuizQuestion {
   question: string
@@ -42,6 +44,8 @@ export default function ResearchAnalyzer() {
   const [isFallbackData, setIsFallbackData] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState<VideoJobStatus | null>(null)
   const [refreshLibrary, setRefreshLibrary] = useState(0)
+  const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([])
+  const [isExtractingGithub, setIsExtractingGithub] = useState(false)
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -79,6 +83,7 @@ export default function ResearchAnalyzer() {
         setAnalysis(null)
         setSuccessMessage(null)
         setIsFallbackData(false)
+        setGithubRepos([])
       } else {
         setError("Please select a PDF file")
       }
@@ -92,17 +97,38 @@ export default function ResearchAnalyzer() {
     setError(null)
     setSuccessMessage(null)
     setIsFallbackData(false)
+    setGithubRepos([])
+    setIsExtractingGithub(true)
 
     try {
       const formData = new FormData()
       formData.append("pdf", file)
 
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        body: formData,
-      })
+      // Run analysis and GitHub extraction in parallel
+      const [analysisResponse, githubReposResult] = await Promise.allSettled([
+        fetch("/api/analyze", {
+          method: "POST",
+          body: formData,
+        }),
+        extractGitHubRepos(file, {
+          fetchReadmes: true,
+          simplifyReadmes: true
+        })
+      ])
 
-      if (response.ok) {
+      // Handle GitHub extraction result
+      if (githubReposResult.status === 'fulfilled') {
+        setGithubRepos(githubReposResult.value)
+      } else {
+        console.warn("GitHub extraction failed:", githubReposResult.reason)
+      }
+      setIsExtractingGithub(false)
+
+      // Handle analysis response
+      if (analysisResponse.status === 'fulfilled') {
+        const response = analysisResponse.value
+        
+        if (response.ok) {
         const result = await response.json()
         setAnalysis(result)
 
@@ -113,8 +139,9 @@ export default function ResearchAnalyzer() {
             "Analysis completed with sample data. The AI had difficulty processing this specific document. You can still explore the interface with the sample content below.",
           )
         } else {
+          const githubCount = githubRepos.length
           setSuccessMessage(
-            `Successfully analyzed "${file.name}" and extracted ${result.concepts?.length || 0} concepts and ${result.questions?.length || 0} quiz questions!`,
+            `Successfully analyzed "${file.name}" and extracted ${result.concepts?.length || 0} concepts, ${result.questions?.length || 0} quiz questions${githubCount > 0 ? `, and found ${githubCount} GitHub repositories` : ''}!`,
           )
         }
       } else {
@@ -131,12 +158,16 @@ export default function ResearchAnalyzer() {
         } catch {
           setError("Analysis failed. Please try again with a different document.")
         }
+        }
+      } else {
+        setError("Analysis failed. Please try again with a different document.")
       }
     } catch (error) {
       console.error("Error analyzing document:", error)
       setError("Network error. Please check your connection and try again.")
     } finally {
       setIsAnalyzing(false)
+      setIsExtractingGithub(false)
     }
   }
 
@@ -221,6 +252,7 @@ export default function ResearchAnalyzer() {
                           setAnalysis(null)
                           setSuccessMessage(null)
                           setIsFallbackData(false)
+                          setGithubRepos([])
                         }}
                         className="text-green-700 border-green-300 hover:bg-green-100"
                       >
@@ -290,6 +322,14 @@ export default function ResearchAnalyzer() {
 
             {/* Concepts Display */}
             {analysis && <ConceptsDisplay concepts={analysis.concepts} />}
+            
+            {/* GitHub Repositories Panel */}
+            {(githubRepos.length > 0 || isExtractingGithub) && (
+              <GitHubReposPanel 
+                repos={githubRepos}
+                className={isExtractingGithub ? "opacity-50" : ""}
+              />
+            )}
           </div>
 
           {/* Side Panels */}

@@ -8,7 +8,7 @@ load_dotenv()
 
 LMNT_API_KEY = os.getenv("LMNT_API_KEY")
 
-async def generate_voice(text: str, output_path: str, voice_id: str = "morgan", format: str = "wav") -> str:
+async def generate_voice(text: str, output_path: str, voice_id: str = "brandon", format: str = "wav") -> str:
     """
     Generate voice audio from text using LMNT API.
     
@@ -91,7 +91,7 @@ async def main():
         text = "Hello, this is a test of the LMNT voice generation system. The quick brown fox jumps over the lazy dog."
         output_path = "test_voice.wav"
         
-        result = await generate_voice(text, output_path, voice_id="morgan")
+        result = await generate_voice(text, output_path, voice_id="brandon")
         print(f"Voice generated: {result}")
         
     except Exception as e:

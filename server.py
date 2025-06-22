@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Dict, Optional
 from video_gen.gen import generate_complete_video
 from video_gen.config_gen import generate_video_config
+from video_gen.github_extract import GitHubExtractor
 
 app = FastAPI(title="Video Generation API", version="1.0.0")
 
@@ -32,6 +33,11 @@ class VideoRequest(BaseModel):
 class VideoRequestWithUpload(BaseModel):
     quality: str = "low_quality"
 
+class GitHubExtractRequest(BaseModel):
+    pdf_path: Optional[str] = None
+    fetch_readmes: bool = True
+    simplify_readmes: bool = True
+
 class JobStatus(BaseModel):
     job_id: str
     status: str  # pending, processing, completed, failed
@@ -40,6 +46,10 @@ class JobStatus(BaseModel):
     error: Optional[str] = None
     video_path: Optional[str] = None
     pdf_path: Optional[str] = None
+    video_name: Optional[str] = None
+
+class RenameVideoRequest(BaseModel):
+    video_name: str
 
 def load_jobs() -> Dict[str, Dict]:
     """Load jobs from JSON file"""
@@ -149,7 +159,8 @@ async def generate_video(request: VideoRequest, background_tasks: BackgroundTask
         "status": "pending",
         "created_at": datetime.now().isoformat(),
         "pdf_path": request.pdf_path,
-        "quality": request.quality
+        "quality": request.quality,
+        "video_name": None
     }
     
     jobs = load_jobs()
@@ -200,7 +211,8 @@ async def generate_video_upload(
         "created_at": datetime.now().isoformat(),
         "pdf_path": file_path,
         "quality": quality,
-        "original_filename": file.filename
+        "original_filename": file.filename,
+        "video_name": None
     }
     
     jobs = load_jobs()
@@ -259,6 +271,19 @@ async def download_video(job_id: str):
         filename=f"video_{job_id}.mp4"
     )
 
+@app.put("/jobs/{job_id}/rename")
+async def rename_video(job_id: str, request: RenameVideoRequest):
+    """Rename a video"""
+    jobs = load_jobs()
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Update video name
+    jobs[job_id]["video_name"] = request.video_name
+    save_jobs(jobs)
+    
+    return {"message": "Video renamed successfully", "video_name": request.video_name}
+
 @app.delete("/jobs/{job_id}")
 async def delete_job(job_id: str):
     """Delete job and associated files"""
@@ -278,6 +303,80 @@ async def delete_job(job_id: str):
     
     return {"message": "Job deleted successfully"}
 
+@app.post("/extract-github")
+async def extract_github_repos(request: GitHubExtractRequest):
+    """Extract GitHub repository links from PDF"""
+    
+    if not request.pdf_path:
+        raise HTTPException(status_code=400, detail="PDF path is required")
+    
+    # Check if PDF exists
+    if not request.pdf_path.startswith('http') and not os.path.exists(request.pdf_path):
+        raise HTTPException(status_code=400, detail="PDF file not found")
+    
+    try:
+        extractor = GitHubExtractor()
+        result = extractor.process_pdf(
+            request.pdf_path,
+            fetch_readmes=request.fetch_readmes,
+            simplify_readmes=request.simplify_readmes
+        )
+        
+        return {
+            "github_links": result["github_links"],
+            "readmes_count": len(result["readmes"]),
+            "readmes": result["readmes"] if request.fetch_readmes else {},
+            "simplified_readmes": result["simplified_readmes"] if request.simplify_readmes else {}
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"GitHub extraction failed: {str(e)}")
+
+@app.post("/extract-github-upload")
+async def extract_github_upload(
+    file: UploadFile = File(...),
+    fetch_readmes: bool = True,
+    simplify_readmes: bool = True
+):
+    """Upload PDF and extract GitHub repositories"""
+    
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="File must be a PDF")
+    
+    # Create uploads directory
+    os.makedirs("uploads", exist_ok=True)
+    
+    # Generate unique filename
+    file_id = str(uuid.uuid4())
+    file_path = f"uploads/{file_id}_{file.filename}"
+    
+    # Save uploaded file
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+    
+    try:
+        extractor = GitHubExtractor()
+        result = extractor.process_pdf(
+            file_path,
+            fetch_readmes=fetch_readmes,
+            simplify_readmes=simplify_readmes
+        )
+        
+        return {
+            "github_links": result["github_links"],
+            "readmes_count": len(result["readmes"]),
+            "readmes": result["readmes"] if fetch_readmes else {},
+            "simplified_readmes": result["simplified_readmes"] if simplify_readmes else {},
+            "file_path": file_path
+        }
+        
+    except Exception as e:
+        # Clean up uploaded file on error
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=500, detail=f"GitHub extraction failed: {str(e)}")
+
 @app.get("/")
 async def root():
     """API info"""
@@ -287,9 +386,12 @@ async def root():
             "POST /upload-pdf": "Upload PDF file only",
             "POST /generate-video": "Start video generation with PDF path",
             "POST /generate-video-upload": "Upload PDF and start generation",
+            "POST /extract-github": "Extract GitHub repositories from PDF path",
+            "POST /extract-github-upload": "Upload PDF and extract GitHub repositories",
             "GET /jobs/{job_id}": "Get job status",
             "GET /jobs": "List all jobs",
             "GET /download/{job_id}": "Download video",
+            "PUT /jobs/{job_id}/rename": "Rename video",
             "DELETE /jobs/{job_id}": "Delete job"
         }
     }

@@ -1,146 +1,225 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect } from "react"
-import { Play, Download, Clock, CheckCircle, AlertCircle, Video, RefreshCw } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { config, type VideoJobStatus, type VideoQuality } from "@/lib/config"
+import type React from "react";
+import { useState, useEffect } from "react";
+import {
+  Play,
+  Download,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Video,
+  RefreshCw,
+  Edit3,
+  Check,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { config, type VideoJobStatus, type VideoQuality } from "@/lib/config";
 
-interface VideoJob extends VideoJobStatus {}
-
-interface VideoPanelProps {
-  file: File | null
-  isVisible: boolean
-  onVideoGenerated?: (jobId: string) => void
+interface VideoJob extends VideoJobStatus {
+  video_name?: string;
 }
 
-export default function VideoPanel({ file, isVisible, onVideoGenerated }: VideoPanelProps) {
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [currentJob, setCurrentJob] = useState<VideoJob | null>(null)
-  const [quality, setQuality] = useState<VideoQuality>("low_quality")
-  const [error, setError] = useState<string | null>(null)
+interface VideoPanelProps {
+  file: File | null;
+  isVisible: boolean;
+  onVideoGenerated?: (jobId: string) => void;
+}
+
+export default function VideoPanel({
+  file,
+  isVisible,
+  onVideoGenerated,
+}: VideoPanelProps) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [currentJob, setCurrentJob] = useState<VideoJob | null>(null);
+  const [quality, setQuality] = useState<VideoQuality>("low_quality");
+  const [error, setError] = useState<string | null>(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newVideoName, setNewVideoName] = useState("");
 
   // Poll for job status updates
   useEffect(() => {
-    if (!currentJob || currentJob.status === "completed" || currentJob.status === "failed") {
-      return
+    if (
+      !currentJob ||
+      currentJob.status === "completed" ||
+      currentJob.status === "failed"
+    ) {
+      return;
     }
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`${config.VIDEO_API_URL}/jobs/${currentJob.job_id}`)
+        const response = await fetch(
+          `${config.VIDEO_API_URL}/jobs/${currentJob.job_id}`
+        );
         if (response.ok) {
-          const updatedJob = await response.json()
-          setCurrentJob(updatedJob)
-          
+          const updatedJob = await response.json();
+          setCurrentJob(updatedJob);
+
           if (updatedJob.status === "completed" && onVideoGenerated) {
-            onVideoGenerated(updatedJob.job_id)
+            onVideoGenerated(updatedJob.job_id);
           }
         }
       } catch (error) {
-        console.error("Error polling job status:", error)
+        console.error("Error polling job status:", error);
       }
-    }, 2000) // Poll every 2 seconds
+    }, 2000); // Poll every 2 seconds
 
-    return () => clearInterval(pollInterval)
-  }, [currentJob, onVideoGenerated])
+    return () => clearInterval(pollInterval);
+  }, [currentJob, onVideoGenerated]);
 
   const generateVideo = async () => {
-    if (!file) return
+    if (!file) return;
 
-    setIsGenerating(true)
-    setError(null)
+    setIsGenerating(true);
+    setError(null);
 
     try {
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("quality", quality)
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("quality", quality);
 
-      const response = await fetch(`${config.VIDEO_API_URL}/generate-video-upload`, {
-        method: "POST",
-        body: formData,
-      })
+      const response = await fetch(
+        `${config.VIDEO_API_URL}/generate-video-upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (response.ok) {
-        const result = await response.json()
+        const result = await response.json();
         setCurrentJob({
           job_id: result.job_id,
           status: "pending",
           created_at: new Date().toISOString(),
           quality,
           pdf_path: result.file_path,
-          original_filename: file.name
-        })
+          original_filename: file.name,
+        });
       } else {
-        const errorData = await response.json()
-        setError(errorData.detail || "Failed to start video generation")
+        const errorData = await response.json();
+        setError(errorData.detail || "Failed to start video generation");
       }
     } catch (error) {
-      console.error("Error generating video:", error)
-      setError("Network error. Please check your connection and try again.")
+      console.error("Error generating video:", error);
+      setError("Network error. Please check your connection and try again.");
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
   const downloadVideo = async () => {
-    if (!currentJob || currentJob.status !== "completed") return
+    if (!currentJob || currentJob.status !== "completed") return;
 
     try {
-      const response = await fetch(`${config.VIDEO_API_URL}/download/${currentJob.job_id}`)
+      const response = await fetch(
+        `${config.VIDEO_API_URL}/download/${currentJob.job_id}`
+      );
       if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `video_${currentJob.job_id}.mp4`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const fileName = currentJob.video_name || `video_${currentJob.job_id}`;
+        a.download = `${fileName}.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
       } else {
-        setError("Failed to download video")
+        setError("Failed to download video");
       }
     } catch (error) {
-      console.error("Error downloading video:", error)
-      setError("Failed to download video")
+      console.error("Error downloading video:", error);
+      setError("Failed to download video");
     }
-  }
+  };
+
+  const renameVideo = async () => {
+    if (!currentJob || !newVideoName.trim()) return;
+
+    try {
+      const response = await fetch(
+        `${config.VIDEO_API_URL}/jobs/${currentJob.job_id}/rename`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ video_name: newVideoName.trim() }),
+        }
+      );
+
+      if (response.ok) {
+        setCurrentJob({
+          ...currentJob,
+          video_name: newVideoName.trim(),
+        });
+        setIsRenaming(false);
+        setNewVideoName("");
+      } else {
+        setError("Failed to rename video");
+      }
+    } catch (error) {
+      console.error("Error renaming video:", error);
+      setError("Failed to rename video");
+    }
+  };
+
+  const startRenaming = () => {
+    setIsRenaming(true);
+    setNewVideoName(currentJob?.video_name || "");
+  };
+
+  const cancelRenaming = () => {
+    setIsRenaming(false);
+    setNewVideoName("");
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
-        return <Clock className="w-4 h-4 text-yellow-500" />
+        return <Clock className="w-4 h-4 text-yellow-500" />;
       case "processing":
-        return <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+        return <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />;
       case "completed":
-        return <CheckCircle className="w-4 h-4 text-green-500" />
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
       case "failed":
-        return <AlertCircle className="w-4 h-4 text-red-500" />
+        return <AlertCircle className="w-4 h-4 text-red-500" />;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "processing":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "completed":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "failed":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
-  if (!isVisible) return null
+  if (!isVisible) return null;
 
   return (
     <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
@@ -165,9 +244,15 @@ export default function VideoPanel({ file, isVisible, onVideoGenerated }: VideoP
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low_quality">Low Quality (Fast)</SelectItem>
-                    <SelectItem value="medium_quality">Medium Quality</SelectItem>
-                    <SelectItem value="high_quality">High Quality (Slow)</SelectItem>
+                    <SelectItem value="low_quality">
+                      Low Quality (Fastest, still quite slow)
+                    </SelectItem>
+                    <SelectItem value="medium_quality">
+                      Medium Quality
+                    </SelectItem>
+                    <SelectItem value="high_quality">
+                      High Quality (Very Slow)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -192,8 +277,9 @@ export default function VideoPanel({ file, isVisible, onVideoGenerated }: VideoP
             </div>
 
             <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg">
-              <strong>Note:</strong> Video generation creates an educational video from your PDF using AI. 
-              This process may take several minutes depending on document complexity and quality settings.
+              <strong>Note:</strong> Video generation creates an educational
+              video from your PDF using AI. This process may take several
+              minutes depending on document complexity and quality settings.
             </div>
           </>
         ) : (
@@ -201,7 +287,9 @@ export default function VideoPanel({ file, isVisible, onVideoGenerated }: VideoP
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {getStatusIcon(currentJob.status)}
-                <span className="font-medium capitalize">{currentJob.status}</span>
+                <span className="font-medium capitalize">
+                  {currentJob.status}
+                </span>
               </div>
               <Badge className={getStatusColor(currentJob.status)}>
                 {currentJob.status.toUpperCase()}
@@ -209,11 +297,68 @@ export default function VideoPanel({ file, isVisible, onVideoGenerated }: VideoP
             </div>
 
             <div className="space-y-2 text-sm text-slate-600">
-              <div><strong>Job ID:</strong> {currentJob.job_id.slice(0, 8)}...</div>
-              <div><strong>Quality:</strong> {currentJob.quality.replace('_', ' ')}</div>
-              <div><strong>Started:</strong> {new Date(currentJob.created_at).toLocaleTimeString()}</div>
+              <div className="flex items-center gap-2">
+                <strong>Name:</strong>
+                {isRenaming ? (
+                  <div className="flex items-center gap-1 flex-1">
+                    <Input
+                      value={newVideoName}
+                      onChange={(e) => setNewVideoName(e.target.value)}
+                      placeholder="Enter video name"
+                      className="h-6 text-xs"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") renameVideo();
+                        if (e.key === "Escape") cancelRenaming();
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0"
+                      onClick={renameVideo}
+                    >
+                      <Check className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0"
+                      onClick={cancelRenaming}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <span>{currentJob.video_name || "Untitled Video"}</span>
+                    {currentJob.status === "completed" && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-4 w-4 p-0 ml-1"
+                        onClick={startRenaming}
+                      >
+                        <Edit3 className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div>
+                <strong>Job ID:</strong> {currentJob.job_id.slice(0, 8)}...
+              </div>
+              <div>
+                <strong>Quality:</strong> {currentJob.quality.replace("_", " ")}
+              </div>
+              <div>
+                <strong>Started:</strong>{" "}
+                {new Date(currentJob.created_at).toLocaleTimeString()}
+              </div>
               {currentJob.completed_at && (
-                <div><strong>Completed:</strong> {new Date(currentJob.completed_at).toLocaleTimeString()}</div>
+                <div>
+                  <strong>Completed:</strong>{" "}
+                  {new Date(currentJob.completed_at).toLocaleTimeString()}
+                </div>
               )}
             </div>
 
@@ -255,8 +400,8 @@ export default function VideoPanel({ file, isVisible, onVideoGenerated }: VideoP
 
             <Button
               onClick={() => {
-                setCurrentJob(null)
-                setError(null)
+                setCurrentJob(null);
+                setError(null);
               }}
               variant="outline"
               className="w-full"
@@ -274,5 +419,5 @@ export default function VideoPanel({ file, isVisible, onVideoGenerated }: VideoP
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
