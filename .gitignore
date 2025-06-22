@@ -5,6 +5,7 @@ outputs/
 # pycache files
 __pycache__/
 *.pyc
+clips/
 
 
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
