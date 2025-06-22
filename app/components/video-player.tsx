@@ -21,6 +21,7 @@ export default function VideoPlayer({ job, onClose }: VideoPlayerProps) {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
+  const [playbackSpeed, setPlaybackSpeed] = useState(1)
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -98,6 +99,18 @@ export default function VideoPlayer({ job, onClose }: VideoPlayerProps) {
     setIsMuted(videoRef.current.muted)
   }
 
+  const cyclePlaybackSpeed = () => {
+    if (!videoRef.current) return
+
+    const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
+    const currentIndex = speeds.indexOf(playbackSpeed)
+    const nextIndex = (currentIndex + 1) % speeds.length
+    const newSpeed = speeds[nextIndex]
+    
+    setPlaybackSpeed(newSpeed)
+    videoRef.current.playbackRate = newSpeed
+  }
+
   const downloadVideo = async () => {
     if (!job) return
 
@@ -138,6 +151,7 @@ export default function VideoPlayer({ job, onClose }: VideoPlayerProps) {
   const handleLoadedMetadata = () => {
     if (!videoRef.current) return
     setDuration(videoRef.current.duration)
+    videoRef.current.playbackRate = playbackSpeed
   }
   
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -152,12 +166,12 @@ export default function VideoPlayer({ job, onClose }: VideoPlayerProps) {
     setCurrentTime(newTime)
   }
   
-  const handleProgressMouseDown = (e: React.MouseEvent) => {
+  const handleProgressMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     setIsDragging(true)
     handleProgressClick(e)
   }
   
-  const handleProgressMouseMove = (e: React.MouseEvent) => {
+  const handleProgressMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDragging) return
     handleProgressClick(e)
   }
@@ -295,8 +309,18 @@ export default function VideoPlayer({ job, onClose }: VideoPlayerProps) {
                       </div>
                     </div>
                     
-                    <div className="text-white text-sm">
-                      Quality: {job.quality.replace('_', ' ')}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={cyclePlaybackSpeed}
+                        className="h-8 px-2 text-white hover:bg-white/20 text-xs font-medium"
+                      >
+                        {playbackSpeed}x
+                      </Button>
+                      <div className="text-white text-sm">
+                        Quality: {job.quality.replace('_', ' ')}
+                      </div>
                     </div>
                   </div>
                 </div>
