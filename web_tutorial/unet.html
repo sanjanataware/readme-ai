@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>U-Net: Interactive Paper Breakdown</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .authors {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
+        .section {
+            padding: 80px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        h3 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #34495e;
+        }
+
+        .insight-box {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .insight-box h4 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .interactive-demo {
+            background: #f8f9fa;
+            padding: 40px;
+            border-radius: 15px;
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .demo-controls {
+            margin: 20px 0;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .architecture-viz {
+            width: 100%;
+            height: 400px;
+            margin: 20px 0;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .results-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+        }
+
+        .results-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 2rem;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .section {
+                padding: 40px 0;
+            }
+        }
+
+        .animation-demo {
+            position: relative;
+            height: 300px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .data-flow {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: flow 3s infinite linear;
+        }
+
+        @keyframes flow {
+            0% { left: 0%; top: 50%; }
+            25% { left: 25%; top: 25%; }
+            50% { left: 50%; top: 50%; }
+            75% { left: 75%; top: 25%; }
+            100% { left: 100%; top: 50%; }
+        }
+
+        .metric-card {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .metric-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>U-Net: Convolutional Networks for Biomedical Image Segmentation</h1>
+            <div class="subtitle">Interactive Paper Breakdown</div>
+            <div class="authors">Olaf Ronneberger, Philipp Fischer, and Thomas Brox</div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Abstract Section -->
+        <section class="section">
+            <div class="container">
+                <h2>The Big Idea</h2>
+                <div class="insight-box">
+                    <h4>🎯 Core Innovation</h4>
+                    <p>U-Net revolutionized biomedical image segmentation by creating a network that can achieve precise pixel-level classification with very few training images through clever architecture design and data augmentation.</p>
+                </div>
+                
+                <div class="grid">
+                    <div class="card">
+                        <h3>The Problem</h3>
+                        <p>Traditional deep networks needed thousands of annotated images, but biomedical datasets typically have very few labeled examples. Existing methods were slow and had poor localization accuracy.</p>
+                    </div>
+                    <div class="card">
+                        <h3>The Solution</h3>
+                        <p>A U-shaped architecture that combines a contracting path (encoder) with an expanding path (decoder), plus aggressive data augmentation to make the most of limited training data.</p>
+                    </div>
+                    <div class="card">
+                        <h3>The Impact</h3>
+                        <p>Won multiple biomedical image segmentation challenges and became the foundation for countless medical AI applications, processing images in under a second.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture Section -->
+        <section class="section">
+            <div class="container">
+                <h2>U-Net Architecture</h2>
+                
+                <div class="interactive-demo">
+                    <h3>Interactive Architecture Visualization</h3>
+                    <p>Click the buttons to see how data flows through the U-Net architecture</p>
+                    
+                    <svg class="architecture-viz" viewBox="0 0 800 400" id="unet-viz">
+                        <!-- Contracting Path -->
+                        <g id="contracting-path">
+                            <!-- Input -->
+                            <rect x="50" y="180" width="60" height="40" fill="#3498db" stroke="#2980b9" stroke-width="2" rx="5">
+                                <title>Input Image (572x572)</title>
+                            </rect>
+                            <text x="80" y="205" text-anchor="middle" fill="white" font-size="12">Input</text>
+                            
+                            <!-- Conv Block 1 -->
+                            <rect x="150" y="160" width="60" height="80" fill="#e74c3c" stroke="#c0392b" stroke-width="2" rx="5">
+                                <title>Conv 3x3 + ReLU (64 channels)</title>
+                            </rect>
+                            <text x="180" y="205" text-anchor="middle" fill="white" font-size="10">Conv+ReLU</text>
+                            
+                            <!-- Pool 1 -->
+                            <rect x="250" y="170" width="40" height="60" fill="#9b59b6" stroke="#8e44ad" stroke-width="2" rx="5">
+                                <title>Max Pool 2x2</title>
+                            </rect>
+                            <text x="270" y="205" text-anchor="middle" fill="white" font-size="10">Pool</text>
+                            
+                            <!-- Conv Block 2 -->
+                            <rect x="330" y="140" width="60" height="120" fill="#e74c3c" stroke="#c0392b" stroke-width="2" rx="5">
+                                <title>Conv 3x3 + ReLU (128 channels)</title>
+                            </rect>
+                            <text x="360" y="205" text-anchor="middle" fill="white" font-size="10">Conv+ReLU</text>
+                            
+                            <!-- Pool 2 -->
+                            <rect x="430" y="150" width="40" height="100" fill="#9b59b6" stroke="#8e44ad" stroke-width="2" rx="5">
+                                <title>Max Pool 2x2</title>
+                            </rect>
+                            <text x="450" y="205" text-anchor="middle" fill="white" font-size="10">Pool</text>
+                        </g>
+                        
+                        <!-- Bottom -->
+                        <g id="bottom">
+                            <rect x="510" y="120" width="60" height="160" fill="#f39c12" stroke="#e67e22" stroke-width="2" rx="5">
+                                <title>Bottom Conv Layers (1024 channels)</title>
+                            </rect>
+                            <text x="540" y="205" text-anchor="middle" fill="white" font-size="10">Bottom</text>
+                        </g>
+                        
+                        <!-- Expanding Path -->
+                        <g id="expanding-path">
+                            <!-- Up Conv 1 -->
+                            <rect x="610" y="150" width="40" height="100" fill="#27ae60" stroke="#229954" stroke-width="2" rx="5">
+                                <title>Up Conv 2x2</title>
+                            </rect>
+                            <text x="630" y="205" text-anchor="middle" fill="white" font-size="10">Up</text>
+                            
+                            <!-- Conv Block 3 -->
+                            <rect x="690" y="140" width="60" height="120" fill="#e74c3c" stroke="#c0392b" stroke-width="2" rx="5">
+                                <title>Conv 3x3 + ReLU</title>
+                            </rect>
+                            <text x="720" y="205" text-anchor="middle" fill="white" font-size="10">Conv+ReLU</text>
+                        </g>
+                        
+                        <!-- Skip Connections -->
+                        <g id="skip-connections" opacity="0">
+                            <path d="M 180 160 Q 180 100 630 150" stroke="#f1c40f" stroke-width="3" fill="none" stroke-dasharray="5,5">
+                                <title>Skip Connection</title>
+                            </path>
+                            <path d="M 360 140 Q 360 80 630 150" stroke="#f1c40f" stroke-width="3" fill="none" stroke-dasharray="5,5">
+                                <title>Skip Connection</title>
+                            </path>
+                        </g>
+                        
+                        <!-- Arrows -->
+                        <g id="arrows">
+                            <defs>
+                                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#34495e" />
+                                </marker>
+                            </defs>
+                            <line x1="110" y1="200" x2="140" y2="200" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)" />
+                            <line x1="210" y1="200" x2="240" y2="200" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)" />
+                            <line x1="290" y1="200" x2="320" y2="200" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)" />
+                            <line x1="390" y1="200" x2="420" y2="200" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)" />
+                            <line x1="470" y1="200" x2="500" y2="200" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)" />
+                            <line x1="570" y1="200" x2="600" y2="200" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)" />
+                            <line x1="650" y1="200" x2="680" y2="200" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)" />
+                        </g>
+                    </svg>
+                    
+                    <div class="demo-controls">
+                        <button onclick="highlightPath('contracting')">Show Contracting Path</button>
+                        <button onclick="highlightPath('expanding')">Show Expanding Path</button>
+                        <button onclick="highlightPath('skip')">Show Skip Connections</button>
+                        <button onclick="resetVisualization()">Reset</button>
+                    </div>
+                </div>
+
+                <div class="highlight">
+                    <h4>🏗️ Architecture Key Points</h4>
+                    <ul>
+                        <li><strong>Contracting Path:</strong> Captures context through downsampling (like a typical CNN)</li>
+                        <li><strong>Expanding Path:</strong> Enables precise localization through upsampling</li>
+                        <li><strong>Skip Connections:</strong> Combine high-resolution features with upsampled output</li>
+                        <li><strong>No Fully Connected Layers:</strong> Allows processing of arbitrary image sizes</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Training Strategy Section -->
+        <section class="section">
+            <div class="container">
+                <h2>Training Strategy</h2>
+                
+                <div class="grid">
+                    <div class="card">
+                        <h3>Data Augmentation</h3>
+                        <div class="interactive-demo">
+                            <p>See how elastic deformations help with limited data:</p>
+                            <svg width="100%" height="200" viewBox="0 0 400 200">
+                                <g id="original-image">
+                                    <rect x="50" y="50" width="100" height="100" fill="#3498db" opacity="0.7" rx="10"/>
+                                    <circle cx="100" cy="100" r="20" fill="#e74c3c"/>
+                                    <text x="100" y="170" text-anchor="middle" font-size="12">Original</text>
+                                </g>
+                                <g id="augmented-image">
+                                    <rect x="250" y="50" width="100" height="100" fill="#3498db" opacity="0.7" rx="10" transform="skewX(10)"/>
+                                    <ellipse cx="300" cy="100" rx="25" ry="15" fill="#e74c3c"/>
+                                    <text x="300" y="170" text-anchor="middle" font-size="12">Augmented</text>
+                                </g>
+                                <path d="M 160 100 L 240 100" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)"/>
+                            </svg>
+                            <button onclick="animateAugmentation()">Animate Augmentation</button>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>Weighted Loss Function</h3>
+                        <p>Special weighting helps separate touching cells:</p>
+                        <svg width="100%" height="150" viewBox="0 0 300 150">
+                            <circle cx="80" cy="75" r="30" fill="#3498db" opacity="0.7"/>
+                            <circle cx="120" cy="75" r="30" fill="#e74c3c" opacity="0.7"/>
+                            <line x1="100" y1="45" x2="100" y2="105" stroke="#f39c12" stroke-width="4"/>
+                            <text x="100" y="130" text-anchor="middle" font-size="12">High weight border</text>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="insight-box">
+                    <h4>💡 Training Innovation</h4>
+                    <p>The key insight was using elastic deformations to simulate the natural variations in biological tissue, allowing the network to learn robust features from just a few dozen training images instead of thousands.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="section">
+            <div class="container">
+                <h2>Breakthrough Results</h2>
+                
+                <div class="grid">
+                    <div class="card metric-card">
+                        <div class="metric-value">0.000353</div>
+                        <div class="metric-label">Warping Error (Best Score)</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 95%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card metric-card">
+                        <div class="metric-value">92%</div>
+                        <div class="metric-label">IOU on PhC-U373</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 92%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card metric-card">
+                        <div class="metric-value">&lt;1s</div>
+                        <div class="metric-label">Processing Time (512×512)</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Competition Results</h3>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Challenge</th>
+                            <th>Dataset</th>
+                            <th>U-Net Score</th>
+                            <th>Previous Best</th>
+                            <th>Improvement</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>ISBI EM Segmentation</td>
+                            <td>Neuronal Structures</td>
+                            <td>0.000353 (warping error)</td>
+                            <td>0.000420</td>
+                            <td>16% better</td>
+                        </tr>
+                        <tr>
+                            <td>ISBI Cell Tracking</td>
+                            <td>PhC-U373</td>
+                            <td>92.03% IOU</td>
+                            <td>83% IOU</td>
+                            <td>9 points better</td>
+                        </tr>
+                        <tr>
+                            <td>ISBI Cell Tracking</td>
+                            <td>DIC-HeLa</td>
+                            <td>77.56% IOU</td>
+                            <td>46% IOU</td>
+                            <td>31 points better</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Interactive Demo Section -->
+        <section class="section">
+            <div class="container">
+                <h2>Interactive Segmentation Demo</h2>
+                
+                <div class="interactive-demo">
+                    <h3>Simulate U-Net Segmentation Process</h3>
+                    <p>Click to see how U-Net processes an image step by step</p>
+                    
+                    <svg width="100%" height="300" viewBox="0 0 600 300" id="segmentation-demo">
+                        <!-- Input Image -->
+                        <g id="input-stage">
+                            <rect x="50" y="100" width="100" height="100" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="2" rx="5"/>
+                            <circle cx="75" cy="125" r="15" fill="#3498db" opacity="0.8"/>
+                            <circle cx="125" cy="175" r="15" fill="#e74c3c" opacity="0.8"/>
+                            <text x="100" y="220" text-anchor="middle" font-size="12">Input Image</text>
+                        </g>
+                        
+                        <!-- Processing -->
+                        <g id="processing-stage" opacity="0">
+                            <rect x="250" y="50" width="100" height="200" fill="#f39c12" opacity="0.3" rx="5"/>
+                            <text x="300" y="40" text-anchor="middle" font-size="12">U-Net Processing</text>
+                            <circle cx="300" cy="150" r="30" fill="none" stroke="#f39c12" stroke-width="3">
+                                <animateTransform attributeName="transform" type="rotate" values="0 300 150;360 300 150" dur="2s" repeatCount="indefinite"/>
+                            </circle>
+                        </g>
+                        
+                        <!-- Output -->
+                        <g id="output-stage" opacity="0">
+                            <rect x="450" y="100" width="100" height="100" fill="#2c3e50" stroke="#34495e" stroke-width="2" rx="5"/>
+                            <circle cx="475" cy="125" r="15" fill="#00ff00" opacity="0.9"/>
+                            <circle cx="525" cy="175" r="15" fill="#ff0000" opacity="0.9"/>
+                            <text x="500" y="220" text-anchor="middle" font-size="12">Segmented Output</text>
+                        </g>
+                        
+                        <!-- Arrows -->
+                        <g id="demo-arrows" opacity="0">
+                            <line x1="160" y1="150" x2="240" y2="150" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)"/>
+                            <line x1="360" y1="150" x2="440" y2="150" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        </g>
+                    </svg>
+                    
+                    <div class="demo-controls">
+                        <button onclick="runSegmentationDemo()">Run Segmentation Demo</button>
+                        <button onclick="resetSegmentationDemo()">Reset</button>
+                    </div>
+                    
+                    <div id="demo-status" style="margin-top: 20px; font-weight: bold; color: #667eea;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Impact Section -->
+        <section class="section">
+            <div class="container">
+                <h2>Legacy and Impact</h2>
+                
+                <div class="grid">
+                    <div class="card">
+                        <h3>🏥 Medical Applications</h3>
+                        <p>U-Net became the foundation for countless medical imaging applications, from tumor detection to organ segmentation, revolutionizing computer-aided diagnosis.</p>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>🔬 Research Impact</h3>
+                        <p>The paper has been cited thousands of times and inspired numerous architectural improvements, becoming a cornerstone of modern computer vision.</p>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>⚡ Efficiency Breakthrough</h3>
+                        <p>Processing 512×512 images in under a second made real-time medical image analysis practical for the first time.</p>
+                    </div>
+                </div>
+
+                <div class="insight-box">
+                    <h4>🌟 Why U-Net Changed Everything</h4>
+                    <p>U-Net proved that with clever architecture design and data augmentation, you could achieve state-of-the-art results with minimal training data. This was revolutionary for medical imaging where large labeled datasets are rare and expensive to create.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Architecture visualization functions
+        function highlightPath(pathType) {
+            resetVisualization();
+            
+            const svg = document.getElementById('unet-viz');
+            
+            switch(pathType) {
+                case 'contracting':
+                    document.getElementById('contracting-path').style.opacity = '1';
+                    document.getElementById('expanding-path').style.opacity = '0.3';
+                    document.getElementById('bottom').style.opacity = '0.3';
+                    break;
+                case 'expanding':
+                    document.getElementById('expanding-path').style.opacity = '1';
+                    document.getElementById('contracting-path').style.opacity = '0.3';
+                    document.getElementById('bottom').style.opacity = '0.3';
+                    break;
+                case 'skip':
+                    document.getElementById('skip-connections').style.opacity = '1';
+                    document.getElementById('contracting-path').style.opacity = '0.7';
+                    document.getElementById('expanding-path').style.opacity = '0.7';
+                    break;
+            }
+        }
+
+        function resetVisualization() {
+            document.getElementById('contracting-path').style.opacity = '1';
+            document.getElementById('expanding-path').style.opacity = '1';
+            document.getElementById('bottom').style.opacity = '1';
+            document.getElementById('skip-connections').style.opacity = '0';
+        }
+
+        // Data augmentation animation
+        function animateAugmentation() {
+            const augmentedImage = document.getElementById('augmented-image');
+            const originalTransform = augmentedImage.getAttribute('transform') || '';
+            
+            // Animate through different deformations
+            const deformations = [
+                'skewX(10) skewY(5)',
+                'skewX(-5) skewY(10)',
+                'skewX(15) skewY(-5)',
+                'skewX(0) skewY(0)'
+            ];
+            
+            let index = 0;
+            const interval = setInterval(() => {
+                augmentedImage.querySelector('rect').setAttribute('transform', deformations[index]);
+                index++;
+                if (index >= deformations.length) {
+                    clearInterval(interval);
+                }
+            }, 500);
+        }
+
+        // Segmentation demo
+        function runSegmentationDemo() {
+            const stages = ['processing-stage', 'demo-arrows', 'output-stage'];
+            const statusElement = document.getElementById('demo-status');
+            const messages = [
+                'Processing image through U-Net...',
+                'Analyzing features...',
+                'Segmentation complete!'
+            ];
+            
+            resetSegmentationDemo();
+            
+            stages.forEach((stage, index) => {
+                setTimeout(() => {
+                    document.getElementById(stage).style.opacity = '1';
+                    statusElement.textContent = messages[index];
+                    
+                    if (index === stages.length - 1) {
+                        setTimeout(() => {
+                            statusElement.textContent = 'Ready for next demo';
+                        }, 1000);
+                    }
+                }, (index + 1) * 1000);
+            });
+        }
+
+        function resetSegmentationDemo() {
+            document.getElementById('processing-stage').style.opacity = '0';
+            document.getElementById('demo-arrows').style.opacity = '0';
+            document.getElementById('output-stage').style.opacity = '0';
+            document.getElementById('demo-status').textContent = '';
+        }
+
+        // Smooth scrolling for better UX
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add smooth reveal animations
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, observerOptions);
+
+            // Observe all cards and sections
+            document.querySelectorAll('.card, .insight-box').forEach(el => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(20px)';
+                el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(el);
+            });
+        });
+
+        // Add interactive hover effects
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-10px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+    </script>
+</body>
+</html>
