@@ -6,8 +6,12 @@ import { useState } from "react"
 import { Upload, FileText, Brain, Sparkles, AlertCircle, CheckCircle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { config, type VideoJobStatus } from "@/lib/config"
 import QuizPanel from "./components/quiz-panel"
 import ConceptsDisplay from "./components/concepts-display"
+import VideoPanel from "./components/video-panel"
+import VideoLibrary from "./components/video-library"
+import VideoPlayer from "./components/video-player"
 
 interface QuizQuestion {
   question: string
@@ -36,6 +40,8 @@ export default function ResearchAnalyzer() {
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isFallbackData, setIsFallbackData] = useState(false)
+  const [selectedVideo, setSelectedVideo] = useState<VideoJobStatus | null>(null)
+  const [refreshLibrary, setRefreshLibrary] = useState(0)
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -286,12 +292,44 @@ export default function ResearchAnalyzer() {
             {analysis && <ConceptsDisplay concepts={analysis.concepts} />}
           </div>
 
-          {/* Quiz Panel */}
-          <div className="lg:col-span-1">
+          {/* Side Panels */}
+          <div className="lg:col-span-1 space-y-6">
+            <VideoPanel 
+              file={file} 
+              isVisible={!!file} 
+              onVideoGenerated={(jobId) => {
+                setRefreshLibrary(prev => prev + 1)
+                // Find and select the completed video
+                fetch(`${config.VIDEO_API_URL}/jobs/${jobId}`)
+                  .then(res => res.json())
+                  .then(job => {
+                    if (job.status === "completed") {
+                      setSelectedVideo(job)
+                    }
+                  })
+                  .catch(console.error)
+              }} 
+            />
+            <VideoLibrary 
+              onVideoSelect={setSelectedVideo}
+              refreshTrigger={refreshLibrary}
+            />
             <QuizPanel questions={analysis?.questions || []} isVisible={!!analysis} />
           </div>
         </div>
       </div>
+      
+      {/* Video Player Overlay */}
+      {selectedVideo && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl">
+            <VideoPlayer 
+              job={selectedVideo} 
+              onClose={() => setSelectedVideo(null)} 
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
