@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Upload, FileText, Brain, Sparkles, AlertCircle } from "lucide-react"
+import { Upload, FileText, Brain, Sparkles, AlertCircle, CheckCircle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import QuizPanel from "./components/quiz-panel"
@@ -34,6 +34,8 @@ export default function ResearchAnalyzer() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [dragActive, setDragActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [isFallbackData, setIsFallbackData] = useState(false)
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -50,6 +52,9 @@ export default function ResearchAnalyzer() {
     if (files && files[0] && files[0].type === "application/pdf") {
       setFile(files[0])
       setError(null)
+      setAnalysis(null)
+      setSuccessMessage(null)
+      setIsFallbackData(false)
     } else if (files && files[0]) {
       setError("Please select a PDF file")
     }
@@ -65,6 +70,9 @@ export default function ResearchAnalyzer() {
       if (files[0].type === "application/pdf") {
         setFile(files[0])
         setError(null)
+        setAnalysis(null)
+        setSuccessMessage(null)
+        setIsFallbackData(false)
       } else {
         setError("Please select a PDF file")
       }
@@ -76,6 +84,8 @@ export default function ResearchAnalyzer() {
 
     setIsAnalyzing(true)
     setError(null)
+    setSuccessMessage(null)
+    setIsFallbackData(false)
 
     try {
       const formData = new FormData()
@@ -89,10 +99,32 @@ export default function ResearchAnalyzer() {
       if (response.ok) {
         const result = await response.json()
         setAnalysis(result)
+
+        // Check if we got fallback data
+        if (result.concepts?.[0]?.title === "Research Document Analysis") {
+          setIsFallbackData(true)
+          setError(
+            "Analysis completed with sample data. The AI had difficulty processing this specific document. You can still explore the interface with the sample content below.",
+          )
+        } else {
+          setSuccessMessage(
+            `Successfully analyzed "${file.name}" and extracted ${result.concepts?.length || 0} concepts and ${result.questions?.length || 0} quiz questions!`,
+          )
+        }
       } else {
-        const errorData = await response.json().catch(() => ({ error: "Analysis failed" }))
-        setError(errorData.error || "Analysis failed. Please try again.")
-        console.error("Analysis failed:", errorData)
+        // Even if response is not ok, try to get the data
+        try {
+          const result = await response.json()
+          if (result.concepts && result.questions) {
+            setAnalysis(result)
+            setIsFallbackData(true)
+            setError("Analysis completed with sample data due to processing issues.")
+          } else {
+            throw new Error("No valid data received")
+          }
+        } catch {
+          setError("Analysis failed. Please try again with a different document.")
+        }
       }
     } catch (error) {
       console.error("Error analyzing document:", error)
@@ -181,6 +213,8 @@ export default function ResearchAnalyzer() {
                           setFile(null)
                           setError(null)
                           setAnalysis(null)
+                          setSuccessMessage(null)
+                          setIsFallbackData(false)
                         }}
                         className="text-green-700 border-green-300 hover:bg-green-100"
                       >
@@ -188,29 +222,59 @@ export default function ResearchAnalyzer() {
                       </Button>
                     </div>
 
-                    <Button
-                      onClick={analyzeDocument}
-                      disabled={isAnalyzing}
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 h-12 text-lg"
-                    >
-                      {isAnalyzing ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Analyzing Document...
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-5 h-5" />
-                          Analyze with AI
-                        </div>
-                      )}
-                    </Button>
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={analyzeDocument}
+                        disabled={isAnalyzing}
+                        className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 h-12 text-lg"
+                      >
+                        {isAnalyzing ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Analyzing Document...
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-5 h-5" />
+                            Analyze with AI
+                          </div>
+                        )}
+                      </Button>
 
-                    {/* Error Display */}
+                      {analysis && (
+                        <Button
+                          onClick={analyzeDocument}
+                          disabled={isAnalyzing}
+                          variant="outline"
+                          className="h-12 px-4"
+                          title="Re-analyze document"
+                        >
+                          <RefreshCw className="w-5 h-5" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Status Messages */}
+                    {successMessage && (
+                      <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                        <p className="text-green-800">{successMessage}</p>
+                      </div>
+                    )}
+
                     {error && (
-                      <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                        <p className="text-red-800">{error}</p>
+                      <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                        <p className="text-amber-800">{error}</p>
+                      </div>
+                    )}
+
+                    {isFallbackData && (
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-blue-800 text-sm">
+                          <strong>Demo Mode:</strong> You're viewing sample data to explore the interface. Try uploading
+                          a different research paper for better results.
+                        </p>
                       </div>
                     )}
                   </div>
