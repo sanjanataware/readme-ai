@@ -118,7 +118,7 @@ export function GitHubReposPanel({ repos, className }: GitHubReposPanelProps) {
                         <BookOpen className="h-3 w-3" />
                         Simplified README
                       </div>
-                      <div className="prose prose-sm max-w-none p-3 bg-muted/50 rounded border text-sm leading-relaxed prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-background prose-pre:border">
+                      <div className="prose prose-sm max-w-none p-4 bg-muted/50 rounded border prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground prose-code:bg-background prose-code:text-foreground prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-background prose-pre:border prose-ul:text-muted-foreground prose-ol:text-muted-foreground prose-li:text-muted-foreground prose-blockquote:text-muted-foreground prose-a:text-primary hover:prose-a:text-primary/80">
                         <ReactMarkdown>{repo.simplified}</ReactMarkdown>
                       </div>
                       
